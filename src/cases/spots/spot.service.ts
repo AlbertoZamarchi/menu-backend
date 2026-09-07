@@ -1,63 +1,63 @@
-import { Repository } from "typeorm";
-import { Spot } from "./spot.entity";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { CreateCategoryDto } from "./dto/create-spot";
-import { UpdateCategoryDto } from "./dto/update-spot";   
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+import { Spot } from './spot.entity';
+import { CreateSpotDto } from './dto/create-spot.dto';
+import { UpdateSpotDto } from './dto/update-spot.dto';
 
 @Injectable()
-export class CategoryService {
+export class SpotService {
+  constructor(
+    @InjectRepository(Spot)
+    private readonly spotRepository: Repository<Spot>,
+  ) {}
 
-    constructor(
-        @InjectRepository(Spot) 
-        private readonly spotRepository: Repository<Spot> 
-    ) {}
+  findAll(): Promise<Spot[]> {
+    return this.spotRepository.find({
+      order: {
+        name: 'ASC',
+      },
+    });
+  }
 
-    findAll(): Promise<Spot[]> {
-        return this.spotRepository.find({
-            order: { name: 'ASC' }
-        });
+  async findOne(id: string): Promise<Spot> {
+    const spot = await this.spotRepository.findOneBy({ id });
+
+    if (!spot) {
+      throw new NotFoundException('Local não encontrado');
     }
 
-    findOne(id: string): Promise<Spot> {
-        const spot = this.spotRepository.findOneBy({ id });
+    return spot;
+  }
 
-        if (!spot) {
-            throw new NotFoundException('Categoria não encontrada!');
-        }
+  create(dto: CreateSpotDto): Promise<Spot> {
+    const spot = this.spotRepository.create({
+      ...dto,
+      name: dto.name,
+      active: true,
+    });
 
-        return spot;
+    return this.spotRepository.save(spot);
+  }
+
+  async update(id: string, dto: UpdateSpotDto): Promise<Spot> {
+    const spot = await this.findOne(id);
+
+    if (dto.name !== undefined) {
+      spot.name = dto.name;
     }
 
-    create(dto: CreateCategoryDto): Promise<Spot> {
-
-        const spot = this.spotRepository.create({
-            ...dto,
-            name: dto.name,
-            active: true
-        });
-
-        return this.spotRepository.save(spot);
+    if (dto.active !== undefined) {
+      spot.active = dto.active;
     }
 
-    async update(id: string, dto: UpdateCategoryDto): Promise<Spot> {
-        const spot = await this.findOne(id);
+    return this.spotRepository.save(spot);
+  }
 
-        if (dto.name !== undefined) {
-            spot.name = dto.name;
-        }
+  async remove(id: string): Promise<void> {
+    const spot = await this.findOne(id);
 
-        if (dto.name !== undefined) {
-            spot.active = dto.active;
-        }
-
-        return this.spotRepository.save(spot);
-    }
-
-    async remove(id:string): Promise<void> {
-        const spot = await this.findOne(id);
-        
-        await this.spotRepository.remove(spot);
-    }
-
+    await this.spotRepository.remove(spot);
+  }
 }
