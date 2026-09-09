@@ -1,29 +1,11 @@
-import { Inject, Module } from '@nestjs/common';
-import { configModule } from './config/config.module';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigService } from '@nestjs/config';
-
+import { Category } from './cases/categories/category.entity';
+import { Product } from './cases/products/product.entity';
 
 @Module({
   imports: [
-    configModule.forRoot({
-      isGlobal: true,
-      TypeOrmModule.forRootAsync({
-        Inject: [ConfigService],
-        useFactory: (configService: ConfigService) => ({
-          const databaseUrl = configService.get<string>('DATABASE_URL');
-          const databaseSchema = configService.get<string>('DATABASE_SCHEMA', 'public');
-
-          if (!databaseUrl) {
-            throw new Error('A variável de ambiente DATABASE_URL não encontrada.');
-          }
-
-          return {
-            type: 'postgres',
-            url: databaseUrl,
-            schema: databaseSchema,
-            autoLoadEntities: true,
-    }),
+    TypeOrmModule.forFeature([Category, Product])
   ],
   controllers: [],
   providers: [],

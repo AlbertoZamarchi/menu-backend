@@ -1,8 +1,8 @@
-import { Column, Entity, JoinColumn, ManyToMany, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { Category } from '../categories/category.entity';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Category } from "../categories/category.entity";
 
-@Entity('') 
-export class product {
+@Entity() 
+export class Product {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -12,17 +12,16 @@ export class product {
   @Column({ type: 'boolean', default: true })
   active: boolean;
 
-  @Column({type: 'text', nullable: true})
+  @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({type: 'numeric', precision: 10, scale: 2})
+  @Column({ type: 'numeric', precision: 10, scale: 2 })
   price: number;
 
-  @Column({type: 'text', nullable: true})
+  @Column({ type: 'text', nullable: true })
   picture?: string;
 
-  @ManyToOne(() => Category, { nullable: true})
+  @ManyToOne(()=> Category, { nullable: true } )
   @JoinColumn({ name: 'category_id' })
   category: Category | null;
-
 }
