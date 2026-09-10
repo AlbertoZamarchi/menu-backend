@@ -1,13 +1,38 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Category } from './cases/categories/category.entity';
-import { Product } from './cases/products/product.entity';
+import { CategoryModule } from './cases/categories/category.module';
+import { ProductModule } from './cases/products/product.module';
+import { SpotModule } from './cases/spots/spot.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Category, Product])
+    ConfigModule.forRoot({ isGlobal: true }),
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const databaseURL = configService.get<string>('DATABASE_URL');
+        const dbSchema = configService.get<string>('DATABASE_SCHEMA', 'public');
+
+        if (!databaseURL) {
+          throw new Error('A variável de ambiente DATABASE_URL não foi encontrada!');
+        }
+
+        return {
+          type: 'postgres',
+          url: databaseURL,
+          schema: dbSchema,
+          autoLoadEntities: true,
+          synchronize: true,
+          ssl: false
+        }
+      }
+    }),
+    CategoryModule,
+    ProductModule,
+    SpotModule,
+    GuestCheckModule
   ],
-  controllers: [],
-  providers: [],
+
 })
 export class AppModule {}

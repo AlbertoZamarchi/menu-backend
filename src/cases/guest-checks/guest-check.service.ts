@@ -76,4 +76,25 @@ export class GuestCheckService {
     return this.GuestCheckRepository.save(guestCheck);
   }
 
+  findOpenedBySpotid(spotI: string) : Promise<GuestCheck | null> {
+    return this.GuestCheckRepository.findOne({
+      where: {
+        spot: { id: spotId },
+        status: GuestCheckStatus.OPENED
+      },
+      relations: { spot: true }
+    })
+  } 
+
+  async findOrCreateOpened(spotId: string): Promise<GuestCheck> {
+    const opened = await this.findOpenedBySpotid(spotId);
+
+    // Fluxo do SIM
+    if (opened) {
+      return opened;
+    }
+
+    return this.create({spotId})
+  }
+
 }
