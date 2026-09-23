@@ -1,7 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
-@Entity()
-export class spot {
+@Entity() 
+export class Spot {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
