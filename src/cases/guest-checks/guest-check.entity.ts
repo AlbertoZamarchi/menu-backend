@@ -1,5 +1,5 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import { spot } from '../spots/spot.entity';
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Spot } from '../spots/spot.entity';
 
 export enum GuestCheckStatus {
   OPENED = 'OPENED',
@@ -24,5 +24,5 @@ export class GuestCheck {
 
   @ManyToOne(() => Spot, {nullable: false})
   @JoinColumn({ name: 'spot_id'})
-  spot: spot;
+  spot: Spot;
 }

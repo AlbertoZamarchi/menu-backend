@@ -1,11 +1,23 @@
-import { Injectable } from "@nestjs/common";
-import { CreateOrderDto, CreateOrderItemDto } from "./dto/create-order";
-import { Order, OrderStatus } from "./entities/order-entity";
-import { OrderItem } from "./entities/order-item.entity";
-import { GuestCheckService } from "../guest-checks/guest-check.service";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { ProductService } from "../products/product.service";
+
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+import {
+  CreateOrderDto,
+  CreateOrderItemDto,
+} from './dto/create-order';
+
+import { UpdateOrderStatusDto } from './dto/update-order-status';
+import { Order, OrderStatus } from './entities/order-entity';
+import { OrderItem } from './entities/order-item.entity';
+import { GuestCheckService } from '../guest-checks/guest-check.service';
+import { ProductService } from '../products/product.service';
 
 @Injectable()
 export class OrderService {
@@ -17,85 +29,104 @@ export class OrderService {
     private readonly orderRepository: Repository<Order>,
 
     @InjectRepository(OrderItem)
-    private readonly orderItemRepository: Repository<OrderItem>    
-  ){}
+    private readonly orderItemRepository: Repository<OrderItem>,
+  ) {}
 
-    private async prepareItems(dto: CreateOrderItemDto): Promise<OrderItem> {
-        const product = await this.productService.findOne(dto.productId);
-        const subtotal = dto.quatity * product.price;
+  private async prepareItems(
+    dto: CreateOrderItemDto,
+  ): Promise<OrderItem> {
+    const product = await this.productService.findOne(dto.productId);
 
-        return this.orderItemRepository.create({
-            product,
-            quantity:dto.quantity,
-            subtotal
-        })
+    const price = Number(product.price);
+    const subtotal = dto.quantity * price;
+
+    return this.orderItemRepository.create({
+      product,
+      quantity: dto.quantity,
+      price,
+      subtotal,
+    });
+  }
+
+  async create(dto: CreateOrderDto): Promise<Order> {
+    // Localiza ou abre uma comanda para a mesa.
+    const guestCheck =
+      await this.guestCheckService.findOrCreateOpened(dto.spotId);
+
+    const items: OrderItem[] = [];
+    let total = 0;
+
+    // Prepara os itens e calcula o total.
+    for (const itemDto of dto.items) {
+      const item = await this.prepareItems(itemDto);
+
+      items.push(item);
+      total += Number(item.subtotal);
     }
 
-    async create(dto: CreateOrderDto): Promise<Order> {
-        // Regra #1: Verificar se tem comanda aberta para a mesa
-        const guestChek = await this.guestCheckService.findOrCreateOpened(dto.spotId);
+    // Cria o pedido com seus itens.
+    const order = this.orderRepository.create({
+      guestCheck,
+      status: OrderStatus.NEW,
+      total,
+      items,
+    });
 
-        // Monta o totalizador do pedido
-        const items: OrderItem[] = [];
-        let total = 0;
+    // Salva o pedido e os itens pelo cascade.
+    return this.orderRepository.save(order);
+  }
 
-        for (const itemDto of dto.items) {
-            const item = await this.prepareItems(itemDto); // Prepara para inserir no banco
-            items.push(item)
-            total += Number(item.subtotal)
-        }
+  findAll(): Promise<Order[]> {
+    return this.orderRepository.find({
+      relations: {
+        guestCheck: true,
+        items: true,
+      },
+      order: {
+        createdAt: 'ASC',
+      },
+    });
+  }
 
-        // Monta o pedido
-        const order = this.orderRepository.create({
-            guestCheck,
-            status: OrderStatus.NEW,
-            total
-        })
+  async findOne(id: string): Promise<Order> {
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: {
+        guestCheck: true,
+        items: true,
+      },
+    });
 
-        //gravar no banco o pedido
-        return this.orderRepository.save(order);
-        
+    if (!order) {
+      throw new NotFoundException('Pedido não encontrado!');
     }
 
-    findAll(): Promise<Order[]> {
-        return this.orderRepository.find({
-            order: { createAt: 'ASC' }
-        });
+    return order;
+  }
+
+  async updateStatus(
+    id: string,
+    dto: UpdateOrderStatusDto,
+  ): Promise<Order> {
+    const order = await this.findOne(id);
+
+    // Define a sequência permitida dos status.
+    const nextStatus: Record<OrderStatus, OrderStatus | undefined> = {
+      [OrderStatus.NEW]: OrderStatus.PREPARING,
+      [OrderStatus.PREPARING]: OrderStatus.READY,
+      [OrderStatus.READY]: OrderStatus.DELIVERY,
+      [OrderStatus.DELIVERY]: undefined,
+    };
+
+    // Impede alterações fora da sequência correta.
+    if (nextStatus[order.status] !== dto.status) {
+      throw new BadRequestException(
+        'Status inválido! Siga a sequência correta do pedido.',
+      );
     }
-    
-    async findOne(id: string): Promise<Order> {
-        const order = await this.orderRepository.findOneBy({ id });
-    
-        if (!order) {
-          throw new NotFoundException('Pedido não encontrado!');
-        }
-    
-        return order;
-      }
 
-      async updateStatus(
-        id: string, 
-        dto: UpdateOrderStatusDto
-        ): Promise<Order> {
-            const order = await this.findOne(id);
+    order.status = dto.status;
 
-            // Determino a sequencia obrigatoria de mudança de status
-            const nextStatus: Record<OrderStatus, OrderStatus | undefined> = {
-                [OrderStatus.NEW]: OrderStatus.PREPARING,
-                [OrderStatus.PREPARING]: OrderStatus.READY,
-                [OrderStatus.READY]: OrderStatus.DELIVERY,
-                [OrderStatus.DELIVERY]: undefined
-            }
-            
-            //Verifico se o client está enviando um status válido
-            if (nextStatus[dto.status] !== dto.status) {
-                throw new BadRequestException('Status inválido!');
-            }
-
-            //Forço a mudança de status
-            order.status = dto.status
-
-            // Grava alteração no banco
-            return this.orderRepository.save(order);
-      }
+    return this.orderRepository.save(order);
+  }
 }

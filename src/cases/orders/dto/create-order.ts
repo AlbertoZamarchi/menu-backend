@@ -1,22 +1,30 @@
-import { Type } from "class-transformer";
-import { ArrayMinSize, IsArray, IsUUID, ValidateNested } from "class-validator";
 
-export class CrateOrderItemDto {
-    @IsUUID()
-    productId: string;
+import { Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsInt,
+  IsPositive,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 
-    @IsInt()
-    @IsPossitive()
-    quantity: number;
+export class CreateOrderItemDto {
+  @IsUUID()
+  productId: string;
+
+  @IsInt()
+  @IsPositive()
+  quantity: number;
 }
 
 export class CreateOrderDto {
-    @IsUUID()
-    spotId: string;
+  @IsUUID()
+  spotId: string;
 
-    @IsArray()
-    @ArrayMinSize(1)
-    @ValidateNested({each: true})
-    @Type(() => CreateOrderDto)
-    items: CreateOrderItemDto[];
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderItemDto)
+  items: CreateOrderItemDto[];
 }

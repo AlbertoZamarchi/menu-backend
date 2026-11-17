@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 
 import { GuestCheckService } from './guest-check.service';
-import { CreateGuestCheckDto } from './dto/create-spot.dto';
+import { CreateGuestCheckDto } from './dto/create-guest-check';
 import { GuestCheck } from './guest-check.entity';
 
 @Controller('guest-checks')
