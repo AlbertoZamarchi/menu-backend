@@ -12,7 +12,10 @@ export class ProductController {
   ){}
 
   @Get()
-  findAll() : Promise<Product[]> {
+  findAll(
+    @Query('categoryId', new ParseUUIDPipe({ optional: true }))
+    categoryId?: string
+  ) : Promise<Product[]> {
     return this.service.findAll();
   }
 
